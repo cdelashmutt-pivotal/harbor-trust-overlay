@@ -1,0 +1,187 @@
+apiVersion: v1
+data:
+  cas-chartmuseum-dpl.yaml: |
+    #@ load("/values.star", "values")
+    #@ load("/kinds.lib.yaml", "kind_overlays")
+    #@ load("@ytt:overlay", "overlay")
+
+    #@ kind = kind_overlays
+    #@ core_metadata = overlay.subset({"metadata": {"name": "harbor-chartmuseum"}})
+
+    #@ if hasattr(values, "caCertBundle"):
+    #@overlay/match by=overlay.and_op(kind.deployment, core_metadata),missing_ok=True
+    ---
+    spec:
+      template:
+        spec:
+          volumes:
+          - name: ca-bundle-certs
+            secret:
+              secretName: trusted-cas
+          containers:
+          #@overlay/match by=overlay.subset({"name": "chartmuseum"})
+          - name: chartmuseum
+            volumeMounts:
+            - name: ca-bundle-certs
+              mountPath: /harbor_cust_cert/custom-ca.crt
+              subPath: ca.crt
+    #@ end
+  cas-clair-dpl.yaml: |
+    #@ load("/values.star", "values")
+    #@ load("/kinds.lib.yaml", "kind_overlays")
+    #@ load("@ytt:overlay", "overlay")
+
+    #@ kind = kind_overlays
+    #@ core_metadata = overlay.subset({"metadata": {"name": "harbor-clair"}})
+
+    #@ if hasattr(values, "caCertBundle"):
+    #@overlay/match by=overlay.and_op(kind.deployment, core_metadata),missing_ok=True
+    ---
+    spec:
+      template:
+        spec:
+          volumes:
+          - name: ca-bundle-certs
+            secret:
+              secretName: trusted-cas
+          containers:
+          #@overlay/match by=overlay.subset({"name": "clair"})
+          - name: clair
+            volumeMounts:
+            - name: ca-bundle-certs
+              mountPath: /harbor_cust_cert/custom-ca.crt
+              subPath: ca.crt
+          #@overlay/match by=overlay.subset({"name": "adapter"})
+          - name: adapter
+            volumeMounts:
+            - name: ca-bundle-certs
+              mountPath: /harbor_cust_cert/custom-ca.crt
+              subPath: ca.crt
+    #@ end
+  cas-core-dpl.yaml: |
+    #@ load("/values.star", "values")
+    #@ load("/kinds.lib.yaml", "kind_overlays")
+    #@ load("@ytt:overlay", "overlay")
+
+    #@ kind = kind_overlays
+    #@ core_metadata = overlay.subset({"metadata": {"name": "harbor-core"}})
+
+    #@ if hasattr(values, "caCertBundle"):
+    #@overlay/match by=overlay.and_op(kind.deployment, core_metadata)
+    ---
+    spec:
+      template:
+        spec:
+          volumes:
+          - name: ca-bundle-certs
+            secret:
+              secretName: trusted-cas
+          containers:
+          #@overlay/match by=overlay.subset({"name": "core"})
+          - name: core
+            volumeMounts:
+            - name: ca-bundle-certs
+              mountPath: /harbor_cust_cert/custom-ca.crt
+              subPath: ca.crt
+    #@ end
+  cas-jobservice-dpl.yaml: |
+    #@ load("/values.star", "values")
+    #@ load("/kinds.lib.yaml", "kind_overlays")
+    #@ load("@ytt:overlay", "overlay")
+
+    #@ kind = kind_overlays
+    #@ core_metadata = overlay.subset({"metadata": {"name": "harbor-jobservice"}})
+
+    #@ if hasattr(values, "caCertBundle"):
+    #@overlay/match by=overlay.and_op(kind.deployment, core_metadata)
+    ---
+    spec:
+      template:
+        spec:
+          volumes:
+          - name: ca-bundle-certs
+            secret:
+              secretName: trusted-cas
+          containers:
+          #@overlay/match by=overlay.subset({"name": "jobservice"})
+          - name: jobservice
+            volumeMounts:
+            - name: ca-bundle-certs
+              mountPath: /harbor_cust_cert/custom-ca.crt
+              subPath: ca.crt
+    #@ end
+  cas-registry-dpl.yaml: |
+    #@ load("/values.star", "values")
+    #@ load("/kinds.lib.yaml", "kind_overlays")
+    #@ load("@ytt:overlay", "overlay")
+
+    #@ kind = kind_overlays
+    #@ core_metadata = overlay.subset({"metadata": {"name": "harbor-registry"}})
+    #@ if hasattr(values, "caCertBundle"):
+    #@overlay/match by=overlay.and_op(kind.deployment, core_metadata)
+    ---
+    spec:
+      template:
+        spec:
+          volumes:
+          - name: ca-bundle-certs
+            secret:
+              secretName: trusted-cas
+          containers:
+          #@overlay/match by=overlay.subset({"name": "registry"})
+          - name: registry
+            volumeMounts:
+            - name: ca-bundle-certs
+              mountPath: /harbor_cust_cert/custom-ca.crt
+              subPath: ca.crt
+          #@overlay/match by=overlay.subset({"name": "registryctl"})
+          - name: registryctl
+            volumeMounts:
+            - name: ca-bundle-certs
+              mountPath: /harbor_cust_cert/custom-ca.crt
+              subPath: ca.crt
+    #@ end
+  cas-trivy-sts.yaml: |
+    #@ load("/values.star", "values")
+    #@ load("/kinds.lib.yaml", "kind_overlays")
+    #@ load("@ytt:overlay", "overlay")
+
+    #@ kind = kind_overlays
+    #@ core_metadata = overlay.subset({"metadata": {"name": "harbor-trivy"}})
+
+    #@ if hasattr(values, "caCertBundle"):
+    #@overlay/match by=overlay.and_op(kind.stateful_set, core_metadata),missing_ok=True
+    ---
+    spec:
+      template:
+        spec:
+          volumes:
+          - name: ca-bundle-certs
+            secret:
+              secretName: trusted-cas
+          containers:
+          #@overlay/match by=overlay.subset({"name": "trivy"})
+          - name: trivy
+            volumeMounts:
+            - name: ca-bundle-certs
+              mountPath: /harbor_cust_cert/custom-ca.crt
+              subPath: ca.crt
+    #@ end
+  trusted-cas-secret.yaml: |
+    #@ load("/values.star", "values")
+    #@ load("@ytt:base64", "base64")
+
+    #@ if hasattr(values, "caCertBundle"):
+    ---
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: trusted-cas
+      namespace: #@ values.namespace
+    data: 
+      ca.crt: #@ base64.encode(values.caCertBundle)
+    #@ end
+kind: ConfigMap
+metadata:
+  name: harbor-trust-cas
+  namespace: tanzu-system-registry
